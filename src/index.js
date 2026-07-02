@@ -33,8 +33,11 @@ const translations = {
     reviewPending: "Review a faire",
     reviewStatusChanged: "Statut de review modifie",
     commentReceived: "Commentaire recu",
+    commitReviewed: "Commit reviewe",
     openedBy: "Ouverte par",
     updatedBy: "Modifiee par",
+    reviewedBy: "Reviewe par",
+    commentBy: "Par",
     project: "Projet",
     branch: "Branche",
     commit: "Commit",
@@ -44,8 +47,8 @@ const translations = {
     statuses: {
       PENDING: "En attente",
       IN_REVIEW: "En review",
-      APPROVED: "Approuvee",
-      CHANGES_REQUESTED: "Modifications demandees",
+      REVIEWED: "Reviewee",
+      ACKED: "Ackee",
       CLOSED: "Done",
     },
   },
@@ -56,8 +59,11 @@ const translations = {
     reviewPending: "Review requested",
     reviewStatusChanged: "Review status changed",
     commentReceived: "Comment received",
+    commitReviewed: "Commit reviewed",
     openedBy: "Opened by",
     updatedBy: "Updated by",
+    reviewedBy: "Reviewed by",
+    commentBy: "By",
     project: "Project",
     branch: "Branch",
     commit: "Commit",
@@ -67,8 +73,8 @@ const translations = {
     statuses: {
       PENDING: "Pending",
       IN_REVIEW: "In review",
-      APPROVED: "Approved",
-      CHANGES_REQUESTED: "Changes requested",
+      REVIEWED: "Reviewed",
+      ACKED: "Acked",
       CLOSED: "Done",
     },
   },
@@ -182,9 +188,35 @@ function formatEvent(event) {
     case "COMMENT_RECEIVED": {
       heading = `${labels.commentReceived}: ${title}`;
       subject = `[${labels.app}] ${heading}`;
-      const message = asString(payload.message);
+      const filePath = asString(payload.filePath);
+      if (filePath) {
+        lines.push(
+          payload.lineNumber ? `${filePath}:${payload.lineNumber}` : filePath,
+        );
+      }
+      const message =
+        asString(payload.commentExcerpt) ?? asString(payload.message);
       if (message) {
         lines.push(message);
+      }
+      const actor =
+        asString(payload.actorNickname) ?? asString(payload.actorEmail);
+      if (actor) {
+        lines.push(`${labels.commentBy}: ${actor}`);
+      }
+      break;
+    }
+    case "COMMIT_REVIEWED": {
+      heading = `${labels.commitReviewed}: ${title}`;
+      subject = `[${labels.app}] ${heading}`;
+      const commitTitles = asString(payload.commitTitles);
+      if (commitTitles) {
+        lines.push(...commitTitles.split("\n"));
+      }
+      const actor =
+        asString(payload.actorNickname) ?? asString(payload.actorEmail);
+      if (actor) {
+        lines.push(`${labels.reviewedBy}: ${actor}`);
       }
       break;
     }
