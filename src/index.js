@@ -34,9 +34,11 @@ const translations = {
     reviewStatusChanged: "Statut de review modifie",
     commentReceived: "Commentaire recu",
     commitReviewed: "Commit reviewe",
+    reviewNewVersion: "Nouvelle version de la review",
     openedBy: "Ouverte par",
     updatedBy: "Modifiee par",
     reviewedBy: "Reviewe par",
+    syncedBy: "Synchronisee par",
     commentBy: "Par",
     project: "Projet",
     branch: "Branche",
@@ -60,9 +62,11 @@ const translations = {
     reviewStatusChanged: "Review status changed",
     commentReceived: "Comment received",
     commitReviewed: "Commit reviewed",
+    reviewNewVersion: "New review version",
     openedBy: "Opened by",
     updatedBy: "Updated by",
     reviewedBy: "Reviewed by",
+    syncedBy: "Synchronized by",
     commentBy: "By",
     project: "Project",
     branch: "Branch",
@@ -217,6 +221,29 @@ function formatEvent(event) {
         asString(payload.actorNickname) ?? asString(payload.actorEmail);
       if (actor) {
         lines.push(`${labels.reviewedBy}: ${actor}`);
+      }
+      break;
+    }
+    case "REVIEW_NEW_VERSION": {
+      const version = payload.version ? `v${payload.version}` : "";
+      heading = `${labels.reviewNewVersion}${version ? ` ${version}` : ""}: ${title}`;
+      subject = `[${labels.app}] ${heading}`;
+      const counts = [
+        ["new", payload.newCount],
+        ["modified", payload.modifiedCount],
+        ["rebased", payload.rebasedCount],
+        ["dropped", payload.droppedCount],
+      ]
+        .filter(([, count]) => typeof count === "number" && count > 0)
+        .map(([name, count]) => `${count} ${name}`)
+        .join(", ");
+      if (counts) {
+        lines.push(counts);
+      }
+      const actor =
+        asString(payload.actorNickname) ?? asString(payload.actorEmail);
+      if (actor) {
+        lines.push(`${labels.syncedBy}: ${actor}`);
       }
       break;
     }
