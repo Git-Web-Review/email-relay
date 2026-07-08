@@ -1,0 +1,4 @@
+[{{ app }}] Commentaire recu: {{ title }}
+{% if filePath %}{{ filePath }}{% if lineNumber %}:{{ lineNumber }}{% endif %}{% endif %}
+{% if commentExcerpt %}{{ commentExcerpt }}{% endif %}
+{% if actor %}Par: {{ actor }}{% endif %}

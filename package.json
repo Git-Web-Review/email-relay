@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "ioredis": "^5.10.2",
-        "nodemailer": "^9.0.1"
+        "nodemailer": "^9.0.1",
+        "nunjucks": "^3.2.4"
     }
 }

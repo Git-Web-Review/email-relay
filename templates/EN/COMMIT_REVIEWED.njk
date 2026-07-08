@@ -1,0 +1,3 @@
+[{{ app }}] Commit reviewed: {{ title }}
+{% if payload.commitTitles %}{{ payload.commitTitles }}{% endif %}
+{% if actor %}Reviewed by: {{ actor }}{% endif %}

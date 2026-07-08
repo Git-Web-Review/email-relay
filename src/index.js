@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import nodemailer from "nodemailer";
+import { renderEmailNotification } from "./notification-template.js";
 
 const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
 const redisChannel = process.env.REDIS_CHANNEL ?? "notifications:email";
@@ -25,71 +26,8 @@ const transporter = dryRun
           : undefined,
     });
 
-const translations = {
-  FR: {
-    app: "git-web-review",
-    notification: "Notification",
-    textNotification: "Notification",
-    reviewPending: "Review a faire",
-    reviewStatusChanged: "Statut de review modifie",
-    commentReceived: "Commentaire recu",
-    commitReviewed: "Commit reviewe",
-    reviewNewVersion: "Nouvelle version de la review",
-    openedBy: "Ouverte par",
-    updatedBy: "Modifiee par",
-    reviewedBy: "Reviewe par",
-    syncedBy: "Synchronisee par",
-    commentBy: "Par",
-    project: "Projet",
-    branch: "Branche",
-    commit: "Commit",
-    openReview: "Ouvrir la review",
-    openGitweb: "Ouvrir git-web",
-    message: "Message",
-    statuses: {
-      PENDING: "En attente",
-      IN_REVIEW: "En review",
-      REVIEWED: "Reviewee",
-      ACKED: "Ackee",
-      CLOSED: "Done",
-    },
-  },
-  EN: {
-    app: "git-web-review",
-    notification: "Notification",
-    textNotification: "Notification",
-    reviewPending: "Review requested",
-    reviewStatusChanged: "Review status changed",
-    commentReceived: "Comment received",
-    commitReviewed: "Commit reviewed",
-    reviewNewVersion: "New review version",
-    openedBy: "Opened by",
-    updatedBy: "Updated by",
-    reviewedBy: "Reviewed by",
-    syncedBy: "Synchronized by",
-    commentBy: "By",
-    project: "Project",
-    branch: "Branch",
-    commit: "Commit",
-    openReview: "Open review",
-    openGitweb: "Open git-web",
-    message: "Message",
-    statuses: {
-      PENDING: "Pending",
-      IN_REVIEW: "In review",
-      REVIEWED: "Reviewed",
-      ACKED: "Acked",
-      CLOSED: "Done",
-    },
-  },
-};
-
 function parseBoolean(value) {
   return /^(1|true|yes|on)$/i.test(String(value));
-}
-
-function normalizeLocale(locale) {
-  return String(locale ?? "FR").toUpperCase() === "EN" ? "EN" : "FR";
 }
 
 function asString(value) {
@@ -115,160 +53,51 @@ function parseEvent(message) {
   }
 }
 
-function reviewTitle(payload) {
-  return (
-    asString(payload.title) ??
-    asString(payload.gitwebTitle) ??
-    asString(payload.reviewId) ??
-    "Review"
+const footerLabels = {
+  FR: {
+    project: "Projet",
+    branch: "Branche",
+    commit: "Commit",
+    openReview: "Ouvrir la review",
+    openGitweb: "Ouvrir git-web",
+  },
+  EN: {
+    project: "Project",
+    branch: "Branch",
+    commit: "Commit",
+    openReview: "Open review",
+    openGitweb: "Open git-web",
+  },
+};
+
+async function formatEvent(event) {
+  const { subject, heading, lines, view } = await renderEmailNotification(
+    event,
+    { frontendUrl },
   );
-}
+  const labels = footerLabels[view.locale] ?? footerLabels.FR;
 
-function reviewUrl(payload) {
-  const reviewId = asString(payload.reviewId);
-  if (reviewId) {
-    return `${frontendUrl}/review/${encodeURIComponent(reviewId)}`;
-  }
-
-  return asString(payload.gitwebUrl);
-}
-
-function statusLabel(labels, status) {
-  const key = asString(status);
-  return key ? (labels.statuses[key] ?? key) : null;
-}
-
-function compactMetadata(labels, payload) {
-  return [
-    [labels.project, asString(payload.sourceProject)],
-    [labels.branch, asString(payload.sourceBranch)],
-    [labels.commit, asString(payload.sourceCommit)],
-  ].filter(([, value]) => !!value);
-}
-
-function formatEvent(event) {
-  const payload =
-    event.payload && typeof event.payload === "object" ? event.payload : {};
-  const labels = translations[normalizeLocale(event.user.locale)];
-  const title = reviewTitle(payload);
-  const url = reviewUrl(payload);
-  const gitwebUrl = asString(payload.gitwebUrl);
-  const lines = [];
-  let subject;
-  let heading;
-
-  switch (event.type) {
-    case "REVIEW_PENDING": {
-      heading = `${labels.reviewPending}: ${title}`;
-      subject = `[${labels.app}] ${heading}`;
-      const ownerEmail = asString(payload.ownerEmail);
-      if (ownerEmail) {
-        lines.push(`${labels.openedBy}: ${ownerEmail}`);
-      }
-      break;
-    }
-    case "REVIEW_STATUS_CHANGED": {
-      const previousStatus = statusLabel(labels, payload.previousStatus) ?? "-";
-      const nextStatus = statusLabel(labels, payload.nextStatus) ?? "-";
-      heading = `${labels.reviewStatusChanged}: ${title}`;
-      subject = `[${labels.app}] ${heading}`;
-      lines.push(`${previousStatus} -> ${nextStatus}`);
-      const actor =
-        asString(payload.actorNickname) ?? asString(payload.actorEmail);
-      if (actor) {
-        lines.push(`${labels.updatedBy}: ${actor}`);
-      }
-      break;
-    }
-    case "TEXT": {
-      heading = asString(payload.title) ?? labels.textNotification;
-      subject = `[${labels.app}] ${heading}`;
-      const message = asString(payload.message);
-      if (message) {
-        lines.push(message);
-      }
-      break;
-    }
-    case "COMMENT_RECEIVED": {
-      heading = `${labels.commentReceived}: ${title}`;
-      subject = `[${labels.app}] ${heading}`;
-      const filePath = asString(payload.filePath);
-      if (filePath) {
-        lines.push(
-          payload.lineNumber ? `${filePath}:${payload.lineNumber}` : filePath,
-        );
-      }
-      const message =
-        asString(payload.commentExcerpt) ?? asString(payload.message);
-      if (message) {
-        lines.push(message);
-      }
-      const actor =
-        asString(payload.actorNickname) ?? asString(payload.actorEmail);
-      if (actor) {
-        lines.push(`${labels.commentBy}: ${actor}`);
-      }
-      break;
-    }
-    case "COMMIT_REVIEWED": {
-      heading = `${labels.commitReviewed}: ${title}`;
-      subject = `[${labels.app}] ${heading}`;
-      const commitTitles = asString(payload.commitTitles);
-      if (commitTitles) {
-        lines.push(...commitTitles.split("\n"));
-      }
-      const actor =
-        asString(payload.actorNickname) ?? asString(payload.actorEmail);
-      if (actor) {
-        lines.push(`${labels.reviewedBy}: ${actor}`);
-      }
-      break;
-    }
-    case "REVIEW_NEW_VERSION": {
-      const version = payload.version ? `v${payload.version}` : "";
-      heading = `${labels.reviewNewVersion}${version ? ` ${version}` : ""}: ${title}`;
-      subject = `[${labels.app}] ${heading}`;
-      const counts = [
-        ["new", payload.newCount],
-        ["modified", payload.modifiedCount],
-        ["rebased", payload.rebasedCount],
-        ["dropped", payload.droppedCount],
-      ]
-        .filter(([, count]) => typeof count === "number" && count > 0)
-        .map(([name, count]) => `${count} ${name}`)
-        .join(", ");
-      if (counts) {
-        lines.push(counts);
-      }
-      const actor =
-        asString(payload.actorNickname) ?? asString(payload.actorEmail);
-      if (actor) {
-        lines.push(`${labels.syncedBy}: ${actor}`);
-      }
-      break;
-    }
-    default: {
-      heading = labels.notification;
-      subject = `[${labels.app}] ${heading}`;
-      lines.push(JSON.stringify(payload));
+  const allLines = [...lines];
+  for (const [name, value] of [
+    [labels.project, view.sourceProject],
+    [labels.branch, view.sourceBranch],
+    [labels.commit, view.sourceCommit],
+  ]) {
+    if (value) {
+      allLines.push(`${name}: ${value}`);
     }
   }
-
-  for (const [name, value] of compactMetadata(labels, payload)) {
-    lines.push(`${name}: ${value}`);
+  if (view.url) {
+    allLines.push(`${labels.openReview}: ${view.url}`);
   }
-
-  if (url) {
-    lines.push(`${labels.openReview}: ${url}`);
-  }
-  if (gitwebUrl && gitwebUrl !== url) {
-    lines.push(`${labels.openGitweb}: ${gitwebUrl}`);
+  if (view.showGitwebUrl) {
+    allLines.push(`${labels.openGitweb}: ${view.gitwebUrl}`);
   }
 
   return {
     subject,
-    text: `${heading}\n\n${lines.join("\n")}`,
-    html: renderHtml(heading, lines),
+    text: `${heading}\n\n${allLines.join("\n")}`,
+    html: renderHtml(heading, allLines),
   };
 }
 
@@ -304,7 +133,7 @@ async function sendEmail(event) {
     return;
   }
 
-  const formatted = formatEvent(event);
+  const formatted = await formatEvent(event);
   if (dryRun) {
     console.log(`[dry-run] email to ${recipient}: ${formatted.subject}`);
     return;

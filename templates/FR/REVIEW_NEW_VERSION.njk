@@ -1,0 +1,3 @@
+[{{ app }}] Nouvelle version de la review{% if payload.version %} v{{ payload.version }}{% endif %}: {{ title }}
+{% if versionCounts %}{{ versionCounts }}{% endif %}
+{% if actor %}Synchronisee par: {{ actor }}{% endif %}
