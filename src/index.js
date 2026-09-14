@@ -10,13 +10,21 @@ const frontendUrl = (
 const mailFrom = process.env.MAIL_FROM ?? "git-web-review@localhost";
 const dryRun = parseBoolean(process.env.EMAIL_DRY_RUN ?? "false");
 
-const subscriber = new Redis(redisUrl);
+// The password is passed as an option rather than inside the URL: a
+// base64-generated password contains `/`, `+` and `=`, which make the URL invalid.
+const subscriber = new Redis(redisUrl, {
+  password: process.env.REDIS_PASSWORD || undefined,
+});
 const transporter = dryRun
   ? null
   : nodemailer.createTransport({
       host: process.env.SMTP_HOST ?? "localhost",
       port: Number(process.env.SMTP_PORT ?? 587),
       secure: parseBoolean(process.env.SMTP_SECURE ?? "false"),
+      // Without this, nodemailer tries STARTTLS then carries on in the clear if
+      // the server does not advertise it: SMTP_USER and SMTP_PASSWORD would go
+      // out in the clear against a misconfigured server or a STARTTLS strip.
+      requireTLS: !parseBoolean(process.env.SMTP_ALLOW_PLAINTEXT ?? "false"),
       auth:
         process.env.SMTP_USER || process.env.SMTP_PASSWORD
           ? {
