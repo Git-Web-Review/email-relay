@@ -1,0 +1,5 @@
+[{{ app }}] Mention: {{ title }}
+{% if actor %}{{ actor }} vous a mentionne dans un commentaire{% else %}Vous avez ete mentionne dans un commentaire{% endif %}
+{% if payload.addedAsReviewer %}Vous avez ete ajoute comme reviewer de cette review{% endif %}
+{% if filePath %}{{ filePath }}{% if lineNumber %}:{{ lineNumber }}{% endif %}{% endif %}
+{% if commentExcerpt %}{{ commentExcerpt }}{% endif %}
