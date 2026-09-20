@@ -69,18 +69,21 @@ function versionCounts(payload, locale) {
       ? {
           new: "new",
           modified: "modified",
+          logModified: "log changed",
           rebased: "rebased",
           dropped: "dropped",
         }
       : {
           new: "nouveaux",
           modified: "modifies",
+          logModified: "logs modifies",
           rebased: "rebases",
           dropped: "retires",
         };
   return [
     [names.new, payload.newCount],
     [names.modified, payload.modifiedCount],
+    [names.logModified, payload.logModifiedCount],
     [names.rebased, payload.rebasedCount],
     [names.dropped, payload.droppedCount],
   ]
