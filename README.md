@@ -14,3 +14,10 @@ Useful environment variables:
 - `EMAIL_DRY_RUN`, log emails instead of sending them
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`
 - `MAIL_FROM`
+
+## User formats
+
+When the event carries `user.mailFormat` (a printf-style format the user set in the
+frontend settings for this notification type), it replaces the template. The
+specifiers are listed in [`src/printf-format.js`](src/printf-format.js); a
+missing value prints nothing and `%%` is a literal `%`.

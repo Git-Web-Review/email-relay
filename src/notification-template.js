@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import nunjucks from "nunjucks";
+import { formatNotification } from "./printf-format.js";
 
 const templateEnv = new nunjucks.Environment(null, {
   autoescape: false,
@@ -199,15 +200,22 @@ async function loadTemplate(event, templatesDir) {
 /**
  * Renders a notification email from a nunjucks template.
  *
+ * A printf-style format the user set (event.user.mailFormat) replaces the
+ * template; the same convention applies to it.
+ *
  * Template convention: the first non-empty rendered line is the subject
  * (usually prefixed with [app]); the remaining non-empty lines form the
  * body. Returns {subject, heading, lines, view}.
  */
 export async function renderEmailNotification(event, options) {
-  const templatesDir = options.templatesDir ?? defaultTemplatesDir;
-  const template = await loadTemplate(event, templatesDir);
   const view = eventView(event, options);
-  const rendered = templateEnv.renderString(template, view);
+  const format = asString(event.user?.mailFormat);
+  const rendered = format
+    ? formatNotification(format, view)
+    : templateEnv.renderString(
+        await loadTemplate(event, options.templatesDir ?? defaultTemplatesDir),
+        view,
+      );
   const lines = rendered
     .split("\n")
     .map((line) => line.trim())
