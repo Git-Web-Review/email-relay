@@ -1,0 +1,3 @@
+[{{ app }}] Commit {% if payload.acked %}acke{% else %}desacke{% endif %}: {{ title }}
+{% if payload.commitHash %}{{ payload.commitHash | truncate(12, true, "") }} {{ payload.commitTitle }}{% endif %}
+{% if actor %}Par: {{ actor }}{% endif %}

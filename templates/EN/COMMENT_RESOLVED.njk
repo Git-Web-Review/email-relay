@@ -1,0 +1,2 @@
+[{{ app }}] Comment {% if payload.done %}resolved{% else %}reopened{% endif %}: {{ title }}
+{% if actor %}{% if payload.done %}Resolved{% else %}Reopened{% endif %} by: {{ actor }}{% endif %}

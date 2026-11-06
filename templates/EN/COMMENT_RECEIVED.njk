@@ -1,4 +1,4 @@
-[{{ app }}] Comment received: {{ title }}
+[{{ app }}] {% if payload.isReply %}Reply{% else %}Comment{% endif %} received: {{ title }}
 {% if filePath %}{{ filePath }}{% if lineNumber %}:{{ lineNumber }}{% endif %}{% endif %}
 {% if commentExcerpt %}{{ commentExcerpt }}{% endif %}
 {% if actor %}By: {{ actor }}{% endif %}
